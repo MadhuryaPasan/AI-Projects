@@ -1,22 +1,23 @@
 import os
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_agent
+import json
+from typing import List, Union, Any
+
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
-from fastapi.responses import StreamingResponse
-import json
+from dotenv import load_dotenv
+
+# LangChain Imports
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from helpers import ollama_localmodels
 # from components import retrieve_context
-# from components import prompt_with_context
-import asyncio
 
-lock = asyncio.Lock() # to lock multiple requests
-
+# --- INITIALIZATION ---
 load_dotenv()
+
 app = FastAPI()
 
 # Configure CORS for frontend communication
@@ -33,22 +34,19 @@ MODEL_NAME = os.getenv("MODEL_NAME")
 BASE_URL = os.getenv("BASE_URL")
 API_KEY = os.getenv("API_KEY")
 
-llm = ChatOpenAI(model=MODEL_NAME, base_url=BASE_URL, api_key=API_KEY)
-
-
-# tools = [retrieve_context]
-# If desired, specify custom instructions
-prompt = (
-    "You have access to a tool that retrieves context from a blog post. "
-    "Use the tool to help answer user queries."
+# Initialize LangChain LLM
+model = ChatOpenAI(
+    model=MODEL_NAME,
+    base_url=BASE_URL,
+    api_key=API_KEY,
 )
-agent = create_agent(
-    model=llm, 
-    tools=[], 
-    # system_prompt=prompt,
-    # middleware=[prompt_with_context]
-    )
 
+# llm = create_agent(
+#     model=model,
+
+# )
+
+# --- MODELS ---
 
 class MessagePart(BaseModel):
     """
@@ -70,8 +68,13 @@ class ChatRequest(BaseModel):
     """Schema for the incoming POST request body."""
     messages: List[Message]
 
+# --- UTILS ---
 
 def convert_to_langchain_messages(messages: List[Message]):
+    """
+    Maps incoming Vercel AI SDK message formats to LangChain's 
+    HumanMessage and AIMessage objects.
+    """
     lc_messages = []
     for m in messages:
         # Extract and join all text parts within a single message
@@ -81,69 +84,59 @@ def convert_to_langchain_messages(messages: List[Message]):
             lc_messages.append(HumanMessage(content=text_content))
         elif m.role == "assistant":
             lc_messages.append(AIMessage(content=text_content))
-    print(lc_messages)
     return lc_messages
 
+# --- STREAMING LOGIC ---
 
 async def generate_data_stream(messages: List[Message]):
-    # async for chunk, metadata in agent.astream(
-    #     {"messages": [{"role": "user", "content": "Tell me a Dad joke"}]},
-    #     stream_mode="messages",
-    # ):
-
-
+    """
+    Generator that yields data formatted for the 
+    Vercel AI SDK Data Stream Protocol (v1).
+    """
     lc_messages = convert_to_langchain_messages(messages)
-
+    print("\n\n======================generate_data_stream:lc_messages=========================")
+    print(lc_messages)
+    print("===============================================\n\n")
     # todo: add the real text_id later
     text_id = "text_0"
+
+    # 1. Signal the start of a text block
     yield f'data: {json.dumps({"type": "text-start", "id": text_id})}\n\n'
-    async for chunk,metadata in agent.astream(
-        # {"messages": [{"role": "user", "content": "Tell me a Dad joke"}]},
-        {"messages": lc_messages},
-        stream_mode="messages",
-    ):
-        
-        # print(chunk)
+
+    # 2. Stream chunks from LangChain LLM
+    async for chunk in model.astream(lc_messages):
         if chunk.content:
             payload = {"type": "text-delta", "id": text_id, "delta": chunk.content}
             yield f"data: {json.dumps(payload)}\n\n"
+
+    # 3. Signal the end of the text block and finish the stream
     yield f'data: {json.dumps({"type": "text-end", "id": text_id})}\n\n'
     yield f'data: {json.dumps({"type": "finish", "finishReason": "stop"})}\n\n'
-
+    
     # 4. Final stop signal
     yield "data: [DONE]\n\n"
 
+# --- ENDPOINTS ---
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    # print(request.messages)
-    async def locked_stream():
-        async with lock:
-            async for chunk in generate_data_stream(request.messages):
-                yield chunk
+    """
+    Main endpoint for chat interactions. 
+    Returns a Server-Sent Events (SSE) stream.
+    """
+    print("\n\n======================chat_endpoint=========================")
+    print(request.messages)
+    print("===============================================\n\n")
     return StreamingResponse(
-        locked_stream(),
+        generate_data_stream(request.messages),
         media_type="text/event-stream",
         headers={
             # Required header for Vercel AI SDK to recognize the stream format
             "x-vercel-ai-data-stream": "v1",
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
         },
     )
-# @app.post("/chat")
-# async def chat_endpoint(request: ChatRequest):
-#     # print(request.messages)
-#     return StreamingResponse(
-#         generate_data_stream(request.messages),
-#         media_type="text/event-stream",
-#         headers={
-#             # Required header for Vercel AI SDK to recognize the stream format
-#             "x-vercel-ai-data-stream": "v1",
-#             "Cache-Control": "no-cache",
-#             "X-Accel-Buffering": "no",
-#         },
-#     )
+
 
 
 @app.get("/ollama/localmodels")

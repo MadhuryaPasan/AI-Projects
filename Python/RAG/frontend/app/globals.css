@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,4 +123,100 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+
+@utility prose-pink {
+  --tw-prose-body: var(--color-pink-800);
+  --tw-prose-headings: var(--color-pink-900);
+  --tw-prose-lead: var(--color-pink-700);
+  --tw-prose-links: var(--color-pink-900);
+  --tw-prose-bold: var(--color-pink-900);
+  --tw-prose-counters: var(--color-pink-600);
+  --tw-prose-bullets: var(--color-pink-400);
+  --tw-prose-hr: var(--color-pink-300);
+  --tw-prose-quotes: var(--color-pink-900);
+  --tw-prose-quote-borders: var(--color-pink-300);
+  --tw-prose-captions: var(--color-pink-700);
+  --tw-prose-code: var(--color-pink-900);
+  --tw-prose-pre-code: var(--color-pink-100);
+  --tw-prose-pre-bg: var(--color-pink-900);
+  --tw-prose-th-borders: var(--color-pink-300);
+  --tw-prose-td-borders: var(--color-pink-200);
+  --tw-prose-invert-body: var(--color-pink-200);
+  --tw-prose-invert-headings: var(--color-white);
+  --tw-prose-invert-lead: var(--color-pink-300);
+  --tw-prose-invert-links: var(--color-white);
+  --tw-prose-invert-bold: var(--color-white);
+  --tw-prose-invert-counters: var(--color-pink-400);
+  --tw-prose-invert-bullets: var(--color-pink-600);
+  --tw-prose-invert-hr: var(--color-pink-700);
+  --tw-prose-invert-quotes: var(--color-pink-100);
+  --tw-prose-invert-quote-borders: var(--color-pink-700);
+  --tw-prose-invert-captions: var(--color-pink-400);
+  --tw-prose-invert-code: var(--color-white);
+  --tw-prose-invert-pre-code: var(--color-pink-300);
+  --tw-prose-invert-pre-bg: rgb(0 0 0 / 50%);
+  --tw-prose-invert-th-borders: var(--color-pink-600);
+  --tw-prose-invert-td-borders: var(--color-pink-700);
+}
+
+@utility prose-blue {
+  /* ---------- Light mode ---------- */
+  --tw-prose-body: theme(colors.slate.700);
+  --tw-prose-headings: theme(colors.slate.900);
+  --tw-prose-lead: theme(colors.slate.600);
+
+  --tw-prose-links: theme(colors.blue.600);
+  --tw-prose-bold: theme(colors.slate.900);
+
+  --tw-prose-counters: theme(colors.slate.500);
+  --tw-prose-bullets: theme(colors.slate.400);
+
+  --tw-prose-hr: theme(colors.slate.200);
+
+  --tw-prose-quotes: theme(colors.slate.800);
+  --tw-prose-quote-borders: theme(colors.blue.300);
+
+  --tw-prose-captions: theme(colors.slate.500);
+
+  /* Inline code */
+  --tw-prose-code: theme(colors.blue.700);
+
+  /* Code blocks */
+  --tw-prose-pre-code: theme(colors.blue.100);
+  --tw-prose-pre-bg: theme(colors.slate.900);
+
+  /* Tables */
+  --tw-prose-th-borders: theme(colors.slate.300);
+  --tw-prose-td-borders: theme(colors.slate.200);
+
+  /* ---------- Dark mode ---------- */
+  --tw-prose-invert-body: theme(colors.slate.300);
+  --tw-prose-invert-headings: theme(colors.white);
+  --tw-prose-invert-lead: theme(colors.slate.400);
+
+  --tw-prose-invert-links: theme(colors.blue.400);
+  --tw-prose-invert-bold: theme(colors.white);
+
+  --tw-prose-invert-counters: theme(colors.slate.400);
+  --tw-prose-invert-bullets: theme(colors.slate.500);
+
+  --tw-prose-invert-hr: theme(colors.slate.700);
+
+  --tw-prose-invert-quotes: theme(colors.slate.200);
+  --tw-prose-invert-quote-borders: theme(colors.blue.600);
+
+  --tw-prose-invert-captions: theme(colors.slate.400);
+
+  /* Inline code (dark) */
+  --tw-prose-invert-code: theme(colors.blue.300);
+
+  /* Code blocks (dark) */
+  --tw-prose-invert-pre-code: theme(colors.blue.200);
+  --tw-prose-invert-pre-bg: rgb(15 23 42 / 85%);
+
+  /* Tables (dark) */
+  --tw-prose-invert-th-borders: theme(colors.slate.600);
+  --tw-prose-invert-td-borders: theme(colors.slate.700);
 }
