@@ -1,5 +1,5 @@
 # from components import retrieve_context
-# from components import prompt_with_context
+from components import prompt_with_context
 import asyncio
 import json
 import os
@@ -42,13 +42,14 @@ llm = ChatOpenAI(model=MODEL_NAME, base_url=BASE_URL, api_key=SecretStr(API_KEY)
 # If desired, specify custom instructions
 prompt = (
     "You have access to a tool that retrieves context from a blog post. "
+    # "You have access to a tool that retrieves context from a blog post. "
     "Use the tool to help answer user queries."
 )
 agent = create_agent(
     model=llm,
     tools=[],
-    # system_prompt=prompt,
-    # middleware=[prompt_with_context]
+    system_prompt=prompt,
+    middleware=[prompt_with_context]
 )
 
 
@@ -137,6 +138,15 @@ async def chat_endpoint(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+class TestMessage(BaseModel):
+    message: str
+
+@app.post("/no_stream")
+async def chat_endpoint(request:TestMessage):
+    ai_response = agent.invoke({"messages":request.message})
+    # return(ai_response["messages"][-1].content)
+    return(ai_response)
 
 
 # @app.post("/chat")
