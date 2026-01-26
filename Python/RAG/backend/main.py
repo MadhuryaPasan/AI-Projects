@@ -1,20 +1,22 @@
-import os
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_agent
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List
-from fastapi.responses import StreamingResponse
-import json
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from helpers import ollama_localmodels
 # from components import retrieve_context
 # from components import prompt_with_context
 import asyncio
+import json
+import os
+from typing import List
 
-lock = asyncio.Lock() # to lock multiple requests
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from langchain.agents import create_agent
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, SecretStr
+
+from helpers import ollama_localmodels
+
+lock = asyncio.Lock()  # to lock multiple requests
 
 load_dotenv()
 app = FastAPI()
@@ -29,11 +31,11 @@ app.add_middleware(
 )
 
 # Environment Variables
-MODEL_NAME = os.getenv("MODEL_NAME")
-BASE_URL = os.getenv("BASE_URL")
-API_KEY = os.getenv("API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME") or ""
+BASE_URL = os.getenv("BASE_URL") or ""
+API_KEY = os.getenv("API_KEY") or ""
 
-llm = ChatOpenAI(model=MODEL_NAME, base_url=BASE_URL, api_key=API_KEY)
+llm = ChatOpenAI(model=MODEL_NAME, base_url=BASE_URL, api_key=SecretStr(API_KEY))
 
 
 # tools = [retrieve_context]
@@ -43,11 +45,11 @@ prompt = (
     "Use the tool to help answer user queries."
 )
 agent = create_agent(
-    model=llm, 
-    tools=[], 
+    model=llm,
+    tools=[],
     # system_prompt=prompt,
     # middleware=[prompt_with_context]
-    )
+)
 
 
 class MessagePart(BaseModel):
@@ -55,19 +57,24 @@ class MessagePart(BaseModel):
     Represents a specific part of a message (text, tool call, etc.)
     Matches Vercel AI SDK Core 'Message' interface.
     """
+
     type: str
     text: str = ""  # Default to empty string if not a text part
+
 
 class Message(BaseModel):
     """
     Represents a full chat message containing multiple parts.
     Used for AI SDK 5/6 compatibility.
     """
+
     role: str
     parts: List[MessagePart]
 
+
 class ChatRequest(BaseModel):
     """Schema for the incoming POST request body."""
+
     messages: List[Message]
 
 
@@ -91,24 +98,22 @@ async def generate_data_stream(messages: List[Message]):
     #     stream_mode="messages",
     # ):
 
-
     lc_messages = convert_to_langchain_messages(messages)
 
     # todo: add the real text_id later
     text_id = "text_0"
-    yield f'data: {json.dumps({"type": "text-start", "id": text_id})}\n\n'
-    async for chunk,metadata in agent.astream(
+    yield f"data: {json.dumps({'type': 'text-start', 'id': text_id})}\n\n"
+    async for chunk, metadata in agent.astream(
         # {"messages": [{"role": "user", "content": "Tell me a Dad joke"}]},
         {"messages": lc_messages},
         stream_mode="messages",
     ):
-        
         # print(chunk)
         if chunk.content:
             payload = {"type": "text-delta", "id": text_id, "delta": chunk.content}
             yield f"data: {json.dumps(payload)}\n\n"
-    yield f'data: {json.dumps({"type": "text-end", "id": text_id})}\n\n'
-    yield f'data: {json.dumps({"type": "finish", "finishReason": "stop"})}\n\n'
+    yield f"data: {json.dumps({'type': 'text-end', 'id': text_id})}\n\n"
+    yield f"data: {json.dumps({'type': 'finish', 'finishReason': 'stop'})}\n\n"
 
     # 4. Final stop signal
     yield "data: [DONE]\n\n"
@@ -121,6 +126,7 @@ async def chat_endpoint(request: ChatRequest):
         async with lock:
             async for chunk in generate_data_stream(request.messages):
                 yield chunk
+
     return StreamingResponse(
         locked_stream(),
         media_type="text/event-stream",
@@ -131,6 +137,8 @@ async def chat_endpoint(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
 # @app.post("/chat")
 # async def chat_endpoint(request: ChatRequest):
 #     # print(request.messages)
@@ -148,4 +156,4 @@ async def chat_endpoint(request: ChatRequest):
 
 @app.get("/ollama/localmodels")
 async def localModels():
-    return(ollama_localmodels())
+    return ollama_localmodels()
