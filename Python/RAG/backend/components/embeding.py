@@ -8,9 +8,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 
 from langchain_ollama import OllamaEmbeddings
 
-embeddings = OllamaEmbeddings(
-    model=EMBEDDING_MODEL
-)
+embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
 
 
 import faiss
@@ -26,15 +24,14 @@ vector_store = FAISS(
     docstore=InMemoryDocstore(),
     index_to_docstore_id={},
 )
-    
-# ======================================================================
 
+# ======================================================================
 
 
 import bs4
 from langchain_community.document_loaders import WebBaseLoader
 
-#only keep post title, headers, and content form the full HTML
+# only keep post title, headers, and content form the full HTML
 bs4_strainer = bs4.SoupStrainer(class_=("post-title", "post-header", "post-content"))
 loader = WebBaseLoader(
     web_paths=("https://lilianweng.github.io/posts/2023-06-23-agent/",),
@@ -66,8 +63,9 @@ document_ids = vector_store.add_documents(documents=all_splits)
 print(document_ids[:3])
 
 
-# Todo: old tool 
+# Todo: old tool
 from langchain.tools import tool
+
 
 @tool(response_format="content_and_artifact")
 def retrieve_context(query: str):
@@ -80,9 +78,11 @@ def retrieve_context(query: str):
     print(serialized)
     return serialized, retrieved_docs
 
+
 # ===============================================================
 
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
+
 
 @dynamic_prompt
 def prompt_with_context(request: ModelRequest) -> str:
