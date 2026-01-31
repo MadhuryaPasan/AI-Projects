@@ -1,6 +1,6 @@
 export async function fetchOllamaModels() {
     try {
-        const response = await fetch("http://127.0.0.1:8000/ollama/localmodels", {
+        const response = await fetch("http://localhost:8000/api/v1/ollama", {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

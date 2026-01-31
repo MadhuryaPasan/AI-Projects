@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageActions, MessageAction } from '@/components/ai-elements/message';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { DefaultChatTransport } from 'ai';
@@ -79,15 +79,23 @@ const PromptInputAttachmentsDisplay = () => {
 const ActionsDemo = () => {
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
 
-  // const [model, setModel] = useState<string>(models[0].id);
-  const [model, setModel] = useState<string>(models[0]["model"]);
-  // console.log(model)
+
+  const [model, setModel] = useState<string>(models[0]["model"] || "");
+
+  
+  // const [model, setModel] = useState<string>("");
+
+  // useEffect(() => {
+  //   if (models && models.length > 0) {
+  //     setModel(models[0].model);
+  //   }
+  // }, [models]);
 
   const [input, setInput] = useState('');
   const { messages, sendMessage, status, regenerate } = useChat(
     {
       transport: new DefaultChatTransport({
-        api: 'http://localhost:8000/chat',
+        api: 'http://localhost:8000/api/v1/chat',
       }),
       // const { messages, sendMessage, status } = useChat({
       // transport: new DefaultChatTransport({
