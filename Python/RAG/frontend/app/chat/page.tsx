@@ -1,8 +1,19 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { MessageActions, MessageAction } from '@/components/ai-elements/message';
-import { Message, MessageContent } from '@/components/ai-elements/message';
+
+// --- 1. EXTERNAL IMPORTS ---
+import { useState, useEffect, Fragment } from 'react';
+import { RefreshCcwIcon, CopyIcon, GlobeIcon } from 'lucide-react';
+import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+
+// --- 2. INTERNAL UI COMPONENTS ---
+import {
+  MessageActions,
+  MessageAction,
+  Message,
+  MessageContent,
+  MessageResponse
+} from '@/components/ai-elements/message';
 import {
   Conversation,
   ConversationContent,
@@ -17,7 +28,6 @@ import {
   PromptInputBody,
   PromptInputButton,
   PromptInputHeader,
-  type PromptInputMessage,
   PromptInputSelect,
   PromptInputSelectContent,
   PromptInputSelectItem,
@@ -29,79 +39,34 @@ import {
   PromptInputTools,
   usePromptInputAttachments,
 } from '@/components/ai-elements/prompt-input';
-import { MessageResponse } from '@/components/ai-elements/message';
-import { RefreshCcwIcon, CopyIcon } from 'lucide-react';
-import { useChat } from '@ai-sdk/react';
-import { Fragment } from 'react';
 
-import {
-  Attachment,
-  AttachmentPreview,
-  AttachmentRemove,
-  Attachments,
-} from '@/components/ai-elements/attachments';
-import { GlobeIcon } from 'lucide-react';
+
+// --- 3. DATA & UTILS ---
 import { fetchOllamaModels } from "@/lib/api-helpers";
 
-// const models = [
-//   { id: 'gpt-4o', name: 'GPT-4o' },
-//   { id: 'claude-opus-4-20250514', name: 'Claude 4 Opus' },
-// ];
-
+/**
+ * Top-level model fetching
+ * Note: Ensure your environment supports top-level await or 
+ * move this inside a useEffect if it causes hydration issues.
+ */
 const models = await fetchOllamaModels() || {};
-// console.log(models[0]["model"])
 
-// handle attachments
-const PromptInputAttachmentsDisplay = () => {
-  const attachments = usePromptInputAttachments();
 
-  if (attachments.files.length === 0) {
-    return null;
-  }
-
-  return (
-    <Attachments variant="inline">
-      {attachments.files.map((attachment) => (
-        <Attachment
-          data={attachment}
-          key={attachment.id}
-          onRemove={() => attachments.remove(attachment.id)}
-        >
-          <AttachmentPreview />
-          <AttachmentRemove />
-        </Attachment>
-      ))}
-    </Attachments>
-  );
-};
-
+// --- 5. MAIN COMPONENT ---
 
 const ActionsDemo = () => {
-  const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
-
-
-  const [model, setModel] = useState<string>(models[0]["model"] || "");
-
-  
-  // const [model, setModel] = useState<string>("");
-
-  // useEffect(() => {
-  //   if (models && models.length > 0) {
-  //     setModel(models[0].model);
-  //   }
-  // }, [models]);
-
+  // --- STATE ---
+  const [model, setModel] = useState<string>(models[0]?.["model"] || "");
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status, regenerate } = useChat(
-    {
-      transport: new DefaultChatTransport({
-        api: 'http://localhost:8000/api/v1/chat',
-      }),
-      // const { messages, sendMessage, status } = useChat({
-      // transport: new DefaultChatTransport({
-      //   api: 'http://localhost:8000/chat',
-      // }),
-    });
+
+  // --- CHAT HOOK ---
+  const { messages, sendMessage, status, regenerate, stop } = useChat({
+    transport: new DefaultChatTransport({
+      api: 'http://localhost:8000/api/v1/chat',
+    }),
+  });
+
+  // --- HANDLERS ---
   const handleSubmit = (_message: any, e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (input.trim()) {
@@ -109,9 +74,12 @@ const ActionsDemo = () => {
       setInput('');
     }
   };
+
   return (
-    <div className="max-w-6xl mx-auto p-6 relative size-full rounded-lg h-lvh ">
-      <div className="flex flex-col h-full ">
+    <div className="max-w-6xl mx-auto p-6 relative size-full rounded-lg h-lvh">
+      <div className="flex flex-col h-full">
+
+        {/* --- CONVERSATION AREA --- */}
         <Conversation>
           <ConversationContent>
             {messages.map((message, messageIndex) => (
@@ -119,8 +87,7 @@ const ActionsDemo = () => {
                 {message.parts.map((part, i) => {
                   switch (part.type) {
                     case 'text':
-                      const isLastMessage =
-                        messageIndex === messages.length - 1;
+                      const isLastMessage = messageIndex === messages.length - 1;
                       return (
                         <Fragment key={`${message.id}-${i}`}>
                           <Message from={message.role}>
@@ -128,6 +95,8 @@ const ActionsDemo = () => {
                               <MessageResponse>{part.text}</MessageResponse>
                             </MessageContent>
                           </Message>
+
+                          {/* Action buttons for Assistant's last response */}
                           {message.role === 'assistant' && isLastMessage && (
                             <MessageActions>
                               <MessageAction
@@ -137,9 +106,7 @@ const ActionsDemo = () => {
                                 <RefreshCcwIcon className="size-3" />
                               </MessageAction>
                               <MessageAction
-                                onClick={() =>
-                                  navigator.clipboard.writeText(part.text)
-                                }
+                                onClick={() => navigator.clipboard.writeText(part.text)}
                                 label="Copy"
                               >
                                 <CopyIcon className="size-3" />
@@ -157,15 +124,15 @@ const ActionsDemo = () => {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+
+        {/* --- INPUT AREA --- */}
         <PromptInput
           onSubmit={handleSubmit}
           className="mt-4 w-full max-w-2xl mx-auto relative"
         >
-          <PromptInputHeader>
-            <PromptInputAttachmentsDisplay />
-          </PromptInputHeader>
-          <PromptInputBody>
 
+          {/* Middle: Text Box */}
+          <PromptInputBody>
             <PromptInputTextarea
               value={input}
               placeholder="Say something..."
@@ -174,25 +141,13 @@ const ActionsDemo = () => {
             />
           </PromptInputBody>
 
+          {/* Bottom: Toolbar Actions */}
           <PromptInputFooter>
             <PromptInputTools>
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
-              <PromptInputButton
-                onClick={() => setUseWebSearch(!useWebSearch)}
-                variant={useWebSearch ? 'default' : 'ghost'}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
+
+              {/* Model Selector */}
               <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
+                onValueChange={(value) => setModel(value)}
                 value={model}
               >
                 <PromptInputSelectTrigger>
@@ -207,19 +162,271 @@ const ActionsDemo = () => {
                 </PromptInputSelectContent>
               </PromptInputSelect>
             </PromptInputTools>
-            <PromptInputSubmit
+
+            {/* Submit Button */}
+            {/* <PromptInputSubmit
               status={status === 'streaming' ? 'streaming' : 'ready'}
               disabled={!input.trim()}
               className="absolute bottom-1 right-1"
-            />
-          </PromptInputFooter>
+            /> */}
 
+            {/* --- SUBMIT / STOP BUTTON --- */}
+            {status === 'streaming' ? (
+              <PromptInputButton
+                onClick={() => stop()}
+                variant="destructive"
+                className="absolute bottom-1 right-1 size-8 p-0"
+              >
+                {/* Square icon representing 'Stop' */}
+                <div className="size-3 bg-white rounded-sm" />
+              </PromptInputButton>
+            ) : (
+              <PromptInputSubmit
+                status="ready"
+                disabled={!input.trim()}
+                className="absolute bottom-1 right-1"
+              />
+            )}
+          </PromptInputFooter>
         </PromptInput>
+
       </div>
     </div>
   );
 };
+
 export default ActionsDemo;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { MessageActions, MessageAction } from '@/components/ai-elements/message';
+// import { Message, MessageContent } from '@/components/ai-elements/message';
+// import { DefaultChatTransport } from 'ai';
+// import {
+//   Conversation,
+//   ConversationContent,
+//   ConversationScrollButton,
+// } from '@/components/ai-elements/conversation';
+// import {
+//   PromptInput,
+//   PromptInputActionAddAttachments,
+//   PromptInputActionMenu,
+//   PromptInputActionMenuContent,
+//   PromptInputActionMenuTrigger,
+//   PromptInputBody,
+//   PromptInputButton,
+//   PromptInputHeader,
+//   type PromptInputMessage,
+//   PromptInputSelect,
+//   PromptInputSelectContent,
+//   PromptInputSelectItem,
+//   PromptInputSelectTrigger,
+//   PromptInputSelectValue,
+//   PromptInputSubmit,
+//   PromptInputTextarea,
+//   PromptInputFooter,
+//   PromptInputTools,
+//   usePromptInputAttachments,
+// } from '@/components/ai-elements/prompt-input';
+// import { MessageResponse } from '@/components/ai-elements/message';
+// import { RefreshCcwIcon, CopyIcon } from 'lucide-react';
+// import { useChat } from '@ai-sdk/react';
+// import { Fragment } from 'react';
+
+// import {
+//   Attachment,
+//   AttachmentPreview,
+//   AttachmentRemove,
+//   Attachments,
+// } from '@/components/ai-elements/attachments';
+// import { GlobeIcon } from 'lucide-react';
+// import { fetchOllamaModels } from "@/lib/api-helpers";
+
+
+// const models = await fetchOllamaModels() || {};
+// // console.log(models[0]["model"])
+
+// // handle attachments
+// const PromptInputAttachmentsDisplay = () => {
+//   const attachments = usePromptInputAttachments();
+
+//   if (attachments.files.length === 0) {
+//     return null;
+//   }
+
+//   return (
+//     <Attachments variant="inline">
+//       {attachments.files.map((attachment) => (
+//         <Attachment
+//           data={attachment}
+//           key={attachment.id}
+//           onRemove={() => attachments.remove(attachment.id)}
+//         >
+//           <AttachmentPreview />
+//           <AttachmentRemove />
+//         </Attachment>
+//       ))}
+//     </Attachments>
+//   );
+// };
+
+
+// const ActionsDemo = () => {
+//   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
+
+
+//   const [model, setModel] = useState<string>(models[0]["model"] || "");
+
+//   const [input, setInput] = useState('');
+//   const { messages, sendMessage, status, regenerate, stop } = useChat(
+//     {
+//       transport: new DefaultChatTransport({
+//         api: 'http://localhost:8000/api/v1/chat',
+//       }),
+//     });
+//   const handleSubmit = (_message: any, e: React.FormEvent<HTMLFormElement>) => {
+//     e.preventDefault();
+//     if (input.trim()) {
+//       sendMessage({ text: input });
+//       setInput('');
+//     }
+//   };
+//   return (
+//     <div className="max-w-6xl mx-auto p-6 relative size-full rounded-lg h-lvh ">
+//       <div className="flex flex-col h-full ">
+//         <Conversation>
+//           <ConversationContent>
+//             {messages.map((message, messageIndex) => (
+//               <Fragment key={message.id}>
+//                 {message.parts.map((part, i) => {
+//                   switch (part.type) {
+//                     case 'text':
+//                       const isLastMessage =
+//                         messageIndex === messages.length - 1;
+//                       return (
+//                         <Fragment key={`${message.id}-${i}`}>
+//                           <Message from={message.role}>
+//                             <MessageContent>
+//                               <MessageResponse>{part.text}</MessageResponse>
+//                             </MessageContent>
+//                           </Message>
+//                           {message.role === 'assistant' && isLastMessage && (
+//                             <MessageActions>
+//                               <MessageAction
+//                                 onClick={() => regenerate()}
+//                                 label="Retry"
+//                               >
+//                                 <RefreshCcwIcon className="size-3" />
+//                               </MessageAction>
+//                               <MessageAction
+//                                 onClick={() =>
+//                                   navigator.clipboard.writeText(part.text)
+//                                 }
+//                                 label="Copy"
+//                               >
+//                                 <CopyIcon className="size-3" />
+//                               </MessageAction>
+//                             </MessageActions>
+//                           )}
+//                         </Fragment>
+//                       );
+//                     default:
+//                       return null;
+//                   }
+//                 })}
+//               </Fragment>
+//             ))}
+//           </ConversationContent>
+//           <ConversationScrollButton />
+//         </Conversation>
+//         <PromptInput
+//           onSubmit={handleSubmit}
+//           className="mt-4 w-full max-w-2xl mx-auto relative"
+//         >
+//           <PromptInputHeader>
+//             <PromptInputAttachmentsDisplay />
+//           </PromptInputHeader>
+//           <PromptInputBody>
+
+//             <PromptInputTextarea
+//               value={input}
+//               placeholder="Say something..."
+//               onChange={(e) => setInput(e.currentTarget.value)}
+//               className="pr-12"
+//             />
+//           </PromptInputBody>
+
+//           <PromptInputFooter>
+//             <PromptInputTools>
+//               <PromptInputActionMenu>
+//                 <PromptInputActionMenuTrigger />
+//                 <PromptInputActionMenuContent>
+//                   <PromptInputActionAddAttachments />
+//                 </PromptInputActionMenuContent>
+//               </PromptInputActionMenu>
+//               <PromptInputButton
+//                 onClick={() => setUseWebSearch(!useWebSearch)}
+//                 variant={useWebSearch ? 'default' : 'ghost'}
+//               >
+//                 <GlobeIcon size={16} />
+//                 <span>Search</span>
+//               </PromptInputButton>
+//               <PromptInputSelect
+//                 onValueChange={(value) => {
+//                   setModel(value);
+//                 }}
+//                 value={model}
+//               >
+//                 <PromptInputSelectTrigger>
+//                   <PromptInputSelectValue />
+//                 </PromptInputSelectTrigger>
+//                 <PromptInputSelectContent>
+//                   {models.map((model: any) => (
+//                     <PromptInputSelectItem key={model.model} value={model.model}>
+//                       {model.model}{model.parameter_size}
+//                     </PromptInputSelectItem>
+//                   ))}
+//                 </PromptInputSelectContent>
+//               </PromptInputSelect>
+//             </PromptInputTools>
+//             <PromptInputSubmit
+//               status={status === 'streaming' ? 'streaming' : 'ready'}
+//               disabled={!input.trim()}
+//               className="absolute bottom-1 right-1"
+//             />
+//           </PromptInputFooter>
+
+//         </PromptInput>
+//       </div>
+//     </div>
+//   );
+// };
+// export default ActionsDemo;
 
 
 

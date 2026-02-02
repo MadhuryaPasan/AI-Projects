@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 from app.helpers import generate_data_stream
+
 from fastapi.responses import StreamingResponse
 
 lock = asyncio.Lock()
@@ -49,7 +50,7 @@ async def chat_endpoint(request: ChatRequest):
         async with lock:
             async for chunk in generate_data_stream(request.messages):
                 yield chunk
-
+    # print(request.messages)
     return StreamingResponse(
         locked_stream(),
         media_type="text/event-stream",

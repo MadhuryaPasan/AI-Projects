@@ -5,6 +5,7 @@ from langchain.agents import create_agent
 from pydantic import SecretStr, BaseModel
 from typing import List
 from langchain_core.messages import HumanMessage, AIMessage
+from app.helpers import prompt_with_context
 import json
 
 # loading env variables
@@ -16,10 +17,13 @@ API_KEY = os.getenv("API_KEY") or ""
 
 # loading the model
 model = ChatOpenAI(model=MODEL_NAME, base_url=BASE_URL, api_key=SecretStr(API_KEY))
-
+prompt = (
+    "You have access to a tool that retrieves context form documents. "
+    "Use the tool to help answer user queries."
+)
 # loading the agent
 agent = create_agent(
-    model=model, tools=[], system_prompt="you are a helpful assistant.", middleware=[]
+    model=model, tools=[], system_prompt=prompt, middleware=[prompt_with_context]
 )
 
 
