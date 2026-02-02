@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File
 from pathlib import Path
 import os
 import shutil
+from app.helpers.embeding.embeding import initialize_vector_store
 
 router = APIRouter(prefix="/files", tags=["files"])
 
@@ -16,13 +17,15 @@ async def create_upload_files(files: list[UploadFile]):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         saved_files.append(file.filename)
+    # trigger every time when a file is saved
+    await initialize_vector_store()
     return {"saved_files": saved_files}
 
 
 @router.get("/list")
 async def list_files():
     # .iterdir() is the modern way to list files with Pathlib
-    # we filter using .is_file() to ensure we don't return sub-folders
+    # filter using .is_file() to ensure don't return sub-folders
     files = [f.name for f in UPLOAD_DIR.iterdir() if f.is_file()]
     return {"files": files}
 
