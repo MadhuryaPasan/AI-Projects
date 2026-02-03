@@ -1,12 +1,16 @@
 'use client';
 
-// --- 1. EXTERNAL IMPORTS ---
 import { useState, useEffect, Fragment } from 'react';
 import { RefreshCcwIcon, CopyIcon, GlobeIcon } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 
-// --- 2. INTERNAL UI COMPONENTS ---
+import {
+  Item,
+  ItemContent,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item"
 import {
   MessageActions,
   MessageAction,
@@ -39,24 +43,22 @@ import {
   PromptInputTools,
   usePromptInputAttachments,
 } from '@/components/ai-elements/prompt-input';
+import { Spinner } from "@/components/ui/spinner"
 
 
 // --- 3. DATA & UTILS ---
 import { fetchOllamaModels } from "@/lib/api-helpers";
 
-/**
- * Top-level model fetching
- * Note: Ensure your environment supports top-level await or 
- * move this inside a useEffect if it causes hydration issues.
- */
-const models = await fetchOllamaModels() || {};
+// get ollama models using an api
+// Todo: idea is to use this api to select available model for the llm
+// const models = await fetchOllamaModels() || {};
 
 
 // --- 5. MAIN COMPONENT ---
 
 const ActionsDemo = () => {
   // --- STATE ---
-  const [model, setModel] = useState<string>(models[0]?.["model"] || "");
+  // const [model, setModel] = useState<string>(models[0]?.["model"] || "");
   const [input, setInput] = useState('');
 
   // --- CHAT HOOK ---
@@ -76,59 +78,76 @@ const ActionsDemo = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 relative size-full rounded-lg h-lvh">
-      <div className="flex flex-col h-full">
 
-        {/* --- CONVERSATION AREA --- */}
-        <Conversation>
-          <ConversationContent>
-            {messages.map((message, messageIndex) => (
-              <Fragment key={message.id}>
-                {message.parts.map((part, i) => {
-                  switch (part.type) {
-                    case 'text':
-                      const isLastMessage = messageIndex === messages.length - 1;
-                      return (
-                        <Fragment key={`${message.id}-${i}`}>
-                          <Message from={message.role}>
-                            <MessageContent>
-                              <MessageResponse>{part.text}</MessageResponse>
-                            </MessageContent>
-                          </Message>
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] max-w-4xl mx-auto w-full bg-white ">
 
-                          {/* Action buttons for Assistant's last response */}
-                          {message.role === 'assistant' && isLastMessage && (
-                            <MessageActions>
-                              <MessageAction
-                                onClick={() => regenerate()}
-                                label="Retry"
-                              >
-                                <RefreshCcwIcon className="size-3" />
-                              </MessageAction>
-                              <MessageAction
-                                onClick={() => navigator.clipboard.writeText(part.text)}
-                                label="Copy"
-                              >
-                                <CopyIcon className="size-3" />
-                              </MessageAction>
-                            </MessageActions>
-                          )}
-                        </Fragment>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </Fragment>
-            ))}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+      {/* --- CONVERSATION AREA --- */}
+      <Conversation className='flex-1 h-lvh p-4 space-y-4'>
 
-        {/* --- INPUT AREA --- */}
+        <ConversationContent>
+          {messages.map((message, messageIndex) => (
+            <Fragment key={message.id}>
+              {message.parts.map((part, i) => {
+                switch (part.type) {
+                  case 'text':
+                    const isLastMessage = messageIndex === messages.length - 1;
+                    return (
+                      <Fragment key={`${message.id}-${i}`}>
+                        <Message from={message.role}>
+                          <MessageContent>
+                            {message.role === 'assistant' && isLastMessage && status === 'streaming' && (
+                              <Item variant="muted">
+                                <ItemMedia>
+                                  <Spinner />
+                                </ItemMedia>
+                                <ItemContent>
+                                  <ItemTitle className="line-clamp-1">Generating response...</ItemTitle>
+                                </ItemContent>
+                              </Item>
+
+                            )}
+                            <MessageResponse>
+                              {part.text}
+                            </MessageResponse>
+                            {/* {status === 'streaming' &&()} */}
+                          </MessageContent>
+                        </Message>
+
+                        {/* Action buttons for Assistant's last response */}
+                        {message.role === 'assistant' && isLastMessage && (
+                          <MessageActions>
+
+                            <MessageAction
+                              onClick={() => regenerate()}
+                              label="Retry"
+                            >
+                              <RefreshCcwIcon className="size-3" />
+                            </MessageAction>
+                            <MessageAction
+                              onClick={() => navigator.clipboard.writeText(part.text)}
+                              label="Copy"
+                            >
+                              <CopyIcon className="size-3" />
+                            </MessageAction>
+                          </MessageActions>
+                        )}
+                      </Fragment>
+                    );
+                  default:
+                    return null;
+                }
+              })}
+            </Fragment>
+          ))}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
+
+      {/* --- INPUT AREA --- */}
+      <div className="p-4 bg-background">
         <PromptInput
           onSubmit={handleSubmit}
-          className="mt-4 w-full max-w-2xl mx-auto relative"
+          className="mt-4 w-full p-2 relative"
         >
 
           {/* Middle: Text Box */}
@@ -146,7 +165,7 @@ const ActionsDemo = () => {
             <PromptInputTools>
 
               {/* Model Selector */}
-              <PromptInputSelect
+              {/* <PromptInputSelect
                 onValueChange={(value) => setModel(value)}
                 value={model}
               >
@@ -160,7 +179,7 @@ const ActionsDemo = () => {
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>
-              </PromptInputSelect>
+              </PromptInputSelect> */}
             </PromptInputTools>
 
             {/* Submit Button */}
@@ -189,9 +208,10 @@ const ActionsDemo = () => {
             )}
           </PromptInputFooter>
         </PromptInput>
-
       </div>
+
     </div>
+
   );
 };
 

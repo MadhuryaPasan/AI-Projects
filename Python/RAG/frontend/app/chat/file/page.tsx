@@ -4,7 +4,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card } from "@/components/ui/card";
 import { Loader2, UploadCloud } from "lucide-react"; // Optional icon
-import Filecard from '../components/filecard';
+import Filecard from "@/app/components/filecard";
 
 export default function FileUpload() {
 

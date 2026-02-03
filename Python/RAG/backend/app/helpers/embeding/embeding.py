@@ -93,8 +93,10 @@ def prompt_with_context(request: ModelRequest) -> str:
         retrieved_docs = vector_store.similarity_search(last_query, k=15)
         docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
         system_message = (
-            "You are a helpful assistant. Only Use the following context in your response:"
-            f"\n\n{docs_content}"
+            "You are a helpful assistant."
+            "Use the provided context to answer the user's question when relevant."
+            "If the context does not contain the answer, respond honestly.\n\n"
+            f"Context:\n{docs_content}"
         )
         # print(system_message)
         return system_message
